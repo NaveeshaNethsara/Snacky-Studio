@@ -1,0 +1,19 @@
+# Ignore Python backend files for Vercel static/frontend deployment
+.venv/
+.snacky/
+downloads/
+backups/
+scratch/
+app/
+tests/
+infra/
+migrations/
+scripts/
+docs/
+requirements*.txt
+alembic.ini
+pytest.ini
+run.py
+Dockerfile
+compose.yaml
+start.bat

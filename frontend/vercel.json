@@ -1,0 +1,9 @@
+{
+  "outputDirectory": "../app/web",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
