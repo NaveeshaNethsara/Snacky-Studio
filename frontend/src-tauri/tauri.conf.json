@@ -1,0 +1,9 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Snacky Studio", "version": "3.0.0", "identifier": "studio.snacky.desktop",
+  "build": { "beforeBuildCommand": "npm run build", "beforeDevCommand": "npm run build", "frontendDist": "../../app/web" },
+  "app": { "windows": [], "withGlobalTauri": true,
+    "security": { "csp": "default-src 'self'; img-src 'self' https: http: data:; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:*; script-src 'self'; object-src 'none'; base-uri 'self'" }
+  },
+  "bundle": { "active": true, "targets": ["nsis"], "externalBin": ["binaries/snacky-server", "binaries/node"], "icon": ["icons/icon.ico"] }
+}

@@ -1,0 +1,13 @@
+.venv
+.git
+.snacky
+downloads
+scratch
+**/__pycache__
+frontend/node_modules
+frontend/src-tauri
+frontend/test-results
+frontend/playwright-report
+app/web
+.env*
+cookies*.txt

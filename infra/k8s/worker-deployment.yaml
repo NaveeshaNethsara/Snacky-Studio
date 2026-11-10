@@ -1,0 +1,98 @@
+# Production Reference: Celery Media Worker Replicas with Graceful Termination
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snacky-worker
+  namespace: snacky
+  labels:
+    app: snacky-worker
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: snacky-worker
+  template:
+    metadata:
+      labels:
+        app: snacky-worker
+    spec:
+      # Allow 120s for active media tasks to finish or release leases cleanly before SIGKILL
+      terminationGracePeriodSeconds: 120
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values: ["snacky-worker"]
+                topologyKey: "kubernetes.io/hostname"
+      containers:
+        - name: worker
+          image: snacky-studio:latest
+          command:
+            - celery
+            - -A
+            - app.worker:celery_app
+            - worker
+            - --loglevel=INFO
+            - --concurrency=2
+            - -Q
+            - media
+          envFrom:
+            - secretRef:
+                name: snacky-secrets
+            - configMapRef:
+                name: snacky-config
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+---
+# Celery Beat Scheduler for Periodic Maintenance (Reaper, Purge, Webhook Delivery)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snacky-beat
+  namespace: snacky
+  labels:
+    app: snacky-beat
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: snacky-beat
+  template:
+    metadata:
+      labels:
+        app: snacky-beat
+    spec:
+      containers:
+        - name: beat
+          image: snacky-studio:latest
+          command:
+            - celery
+            - -A
+            - app.worker:celery_app
+            - beat
+            - --loglevel=INFO
+          envFrom:
+            - secretRef:
+                name: snacky-secrets
+            - configMapRef:
+                name: snacky-config
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+

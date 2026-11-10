@@ -1,0 +1,70 @@
+name: Verify Snacky Studio
+on: [push, pull_request, workflow_dispatch]
+permissions: {contents: read}
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.14'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24', cache: npm, cache-dependency-path: frontend/package-lock.json}
+      - run: pip install -r requirements-dev.txt
+      - run: npm ci && npm run build && npm test && npm run test:a11y
+        working-directory: frontend
+      - run: python -m pytest && python -m tests.media_smoke && python -m tests.photo_smoke
+      - run: npx playwright install --with-deps chromium && npm run test:e2e
+        working-directory: frontend
+        env: {SNACKY_TEST_PYTHON: python}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: {name: browser-test-evidence, path: frontend/test-results}
+  cloud:
+    runs-on: ubuntu-latest
+    env:
+      SNACKY_INTEGRATION: '1'
+      SNACKY_MODE: cloud
+      SNACKY_DATABASE_URL: postgresql+psycopg://snacky:integration-only-password@127.0.0.1:5432/snacky
+      SNACKY_REDIS_URL: redis://127.0.0.1:6379/0
+      SNACKY_CLOUD_PASSWORD: integration-only-workspace-password
+      SNACKY_SESSION_SECRET: integration-only-session-secret-32-characters
+      SNACKY_PUBLIC_ORIGIN: http://localhost:8080
+      SNACKY_S3_ENDPOINT: http://127.0.0.1:9000
+      SNACKY_S3_PUBLIC_ENDPOINT: http://127.0.0.1:9000
+      AWS_ACCESS_KEY_ID: integration
+      AWS_SECRET_ACCESS_KEY: integration-only-storage-secret
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env: {POSTGRES_USER: snacky, POSTGRES_DB: snacky, POSTGRES_PASSWORD: integration-only-password}
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U snacky -d snacky" --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+      storage:
+        image: rustfs/rustfs:1.0.1
+        env: {RUSTFS_ACCESS_KEY: integration, RUSTFS_SECRET_KEY: integration-only-storage-secret, RUSTFS_CONSOLE_ENABLE: 'false'}
+        ports: ['9000:9000']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.14'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: pip install -r requirements-dev.txt
+      - run: python -m pytest tests/test_cloud_integration.py -v
+  deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.14'}
+      - run: python scripts/create_cloud_env.py
+      - run: docker compose --env-file .env.cloud config --quiet
+      - run: docker compose --env-file .env.cloud up --build -d --scale api=2 --scale worker=2 --wait --wait-timeout 180
+      - run: python -m tests.compose_smoke
+      - run: docker compose --env-file .env.cloud exec -T worker celery -A app.worker:celery_app inspect ping --timeout 10
+      - if: always()
+        run: docker compose --env-file .env.cloud down

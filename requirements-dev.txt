@@ -1,0 +1,9 @@
+-r requirements-cloud.txt
+pytest==9.1.1
+pytest-asyncio==1.4.0
+httpx==0.28.1
+moto[s3]==5.2.3
+fakeredis==2.39.0
+pyinstaller==6.22.3
+pip-audit==2.10.1
+

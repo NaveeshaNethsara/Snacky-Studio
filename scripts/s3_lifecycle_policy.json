@@ -1,0 +1,35 @@
+{
+  "Rules": [
+    {
+      "ID": "snacky-media-retention-30d",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "media/"
+      },
+      "Expiration": {
+        "Days": 30
+      }
+    },
+    {
+      "ID": "snacky-abort-incomplete-multipart-uploads",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": ""
+      },
+      "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": 7
+      }
+    },
+    {
+      "ID": "snacky-expire-noncurrent-versions",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": ""
+      },
+      "NoncurrentVersionExpiration": {
+        "NoncurrentDays": 14
+      }
+    }
+  ]
+}
+

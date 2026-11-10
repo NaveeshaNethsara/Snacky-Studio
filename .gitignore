@@ -1,0 +1,77 @@
+# ==============================================================================
+# Snacky Studio - Security & Environment Ignore Rules
+# ==============================================================================
+
+# 1. Environment & Secret Credentials (NEVER COMMIT)
+.env
+.env.*
+!.env.example
+!.env.cloud.example
+*.cookies
+cookies*.txt
+*cookie*.txt
+*.pem
+*.key
+*.crt
+*.pfx
+*.p12
+*.token
+
+# 2. Local State, SQLite Databases, Backups & Scratch Dumps
+.snacky/
+downloads/
+backups/
+scratch/
+*.sqlite3
+*.sqlite
+*.db
+*.dump
+*.enc
+
+# 3. Python Runtime, Virtual Environments & Caches
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+
+# 4. Node & Frontend Dependencies, Test Reports
+frontend/node_modules/
+node_modules/
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+*.tsbuildinfo
+.npm
+.eslintcache
+
+# 5. Desktop / Tauri Build Artifacts & Large Executable Binaries (>100MB)
+frontend/src-tauri/target/
+frontend/src-tauri/binaries/
+frontend/src-tauri/gen/
+*.exe
+*.msi
+*.dmg
+*.AppImage
+*.deb
+
+# 6. Temporary Media & Download Fragments
+*.part
+*.ytdl
+
+# 7. IDE, OS & Agent Metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*~
+.agents/

@@ -1,0 +1,98 @@
+# Production Reference: 3-Node Redis Sentinel High Availability Deployment
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: snacky-redis-ha
+  namespace: snacky
+spec:
+  serviceName: snacky-redis-ha
+  replicas: 3
+  selector:
+    matchLabels:
+      app: snacky-redis-ha
+  template:
+    metadata:
+      labels:
+        app: snacky-redis-ha
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values: ["snacky-redis-ha"]
+              topologyKey: "topology.kubernetes.io/zone"
+      containers:
+        - name: redis
+          image: redis:7.4-alpine
+          command:
+            - sh
+            - -c
+            - |
+              redis-server --appendonly yes --protected-mode no
+          ports:
+            - containerPort: 6379
+              name: redis
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /data
+        - name: sentinel
+          image: redis:7.4-alpine
+          command:
+            - sh
+            - -c
+            - |
+              echo "sentinel monitor mymaster snacky-redis-ha-0.snacky-redis-ha.snacky.svc.cluster.local 6379 2" > /tmp/sentinel.conf
+              echo "sentinel down-after-milliseconds mymaster 5000" >> /tmp/sentinel.conf
+              echo "sentinel failover-timeout mymaster 10000" >> /tmp/sentinel.conf
+              echo "sentinel parallel-syncs mymaster 1" >> /tmp/sentinel.conf
+              redis-sentinel /tmp/sentinel.conf
+          ports:
+            - containerPort: 26379
+              name: sentinel
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: snacky-redis-ha-pdb
+  namespace: snacky
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: snacky-redis-ha
+

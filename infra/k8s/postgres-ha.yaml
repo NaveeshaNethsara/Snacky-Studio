@@ -1,0 +1,63 @@
+# Production Reference: CloudNativePG / Patroni PostgreSQL High Availability Cluster
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: snacky-postgres-ha
+  namespace: snacky
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.0
+  primaryUpdateStrategy: unsupervised
+  storage:
+    size: 50Gi
+    storageClass: gp3-encrypted
+  walStorage:
+    size: 20Gi
+    storageClass: gp3-encrypted
+  monitoring:
+    enablePodMonitor: true
+  postgresql:
+    parameters:
+      max_connections: "200"
+      shared_buffers: "1GB"
+      work_mem: "32MB"
+      maintenance_work_mem: "128MB"
+      wal_level: "replica"
+      max_wal_size: "10GB"
+      min_wal_size: "1GB"
+      checkpoint_completion_target: "0.9"
+  backup:
+    barmanObjectStore:
+      destinationPath: "s3://snacky-vault-backups/postgres-wal/"
+      endpointURL: "https://s3.amazonaws.com"
+      s3Credentials:
+        accessKeyId:
+          name: snacky-secrets
+          key: AWS_ACCESS_KEY_ID
+        secretAccessKey:
+          name: snacky-secrets
+          key: AWS_SECRET_ACCESS_KEY
+      wal:
+        compression: gzip
+        maxParallel: 4
+---
+# Dedicated PgBouncer Connection Pooler (Transaction Mode)
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: snacky-pgbouncer
+  namespace: snacky
+spec:
+  cluster:
+    name: snacky-postgres-ha
+  instances: 2
+  type: rw
+  pgbouncer:
+    poolMode: transaction
+    parameters:
+      max_client_conn: "1000"
+      default_pool_size: "25"
+      reserve_pool_size: "5"
+      reserve_pool_timeout: "5"
+      server_idle_timeout: "60"
+

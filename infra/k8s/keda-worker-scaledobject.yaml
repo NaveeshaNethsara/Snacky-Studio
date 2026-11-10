@@ -1,0 +1,61 @@
+# Kubernetes Event-driven Autoscaling (KEDA) ScaledObject for Celery Media Workers
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: snacky-worker-scaler
+  namespace: snacky
+  labels:
+    app: snacky-worker
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: snacky-worker
+  minReplicaCount: 2
+  maxReplicaCount: 15
+  pollingInterval: 10
+  cooldownPeriod: 180
+  advanced:
+    restoreToOriginalReplicaCount: true
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 180
+          policies:
+            - type: Percent
+              value: 25
+              periodSeconds: 60
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
+  triggers:
+    # Trigger 1: Celery Queue Depth in Redis (Queue name: "media")
+    - type: redis
+      metadata:
+        addressFromEnv: SNACKY_REDIS_URL
+        listName: media
+        listLength: "5"
+      authenticationRef:
+        name: snacky-keda-redis-auth
+    # Trigger 2: Database Outbox Backlog via Prometheus Metric
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-k8s.monitoring.svc:9090
+        metricName: snacky_queue_depth
+        threshold: "5"
+        query: sum(snacky_queue_depth)
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: snacky-keda-redis-auth
+  namespace: snacky
+spec:
+  secretTargetRef:
+    - parameter: address
+      name: snacky-secrets
+      key: SNACKY_REDIS_URL
+
