@@ -89,7 +89,7 @@ def create_app(settings: Settings | None = None, worker=download_media, *, recov
         async def get_open_api(auth: dict = Depends(authenticate_v1)):
             return JSONResponse(get_openapi(title=app.title, version=app.version, routes=app.routes))
     else:
-        app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "[::1]", "testserver"])
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "[::1]", "testserver", "*"])
         app.add_middleware(LocalAccessMiddleware)
 
     # --- SEO endpoints -------------------------------------------------------

@@ -22,4 +22,4 @@ RUN python -c "import static_ffmpeg; static_ffmpeg.add_paths()"
 RUN groupadd -r snacky && useradd -r -g snacky -d /data snacky && mkdir -p /work /data && chown snacky:snacky /work /data
 USER snacky
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]
